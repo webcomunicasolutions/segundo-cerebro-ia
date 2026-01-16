@@ -249,5 +249,68 @@ Cuando un LLM entra en loop de razonamiento:
 
 ---
 
+---
+
+## 🐛 Error y Corrección Adicional
+
+### Problema causado al restaurar ORDER BY:
+
+Al restaurar el ORDER BY original, cometí un error al actualizar el nodo:
+- ❌ Solo actualicé el parámetro `query`
+- ❌ Olvidé incluir el parámetro `options` en la actualización
+- ❌ Esto causó que se perdiera `options.largeNumbersOutput: "text"`
+
+**Error resultante**:
+```
+Error: Could not get parameter
+parameterName: "options"
+```
+
+**Ejecuciones afectadas**: 85374, 85375 (ambas fallaron)
+
+### Corrección inmediata:
+
+Actualización completa del nodo "Consultar tareas" con **todos** los parámetros:
+
+```javascript
+{
+  "parameters": {
+    "descriptionType": "manual",
+    "toolDescription": "Consultar TAREAS guardadas...",
+    "operation": "executeQuery",
+    "query": "SELECT ... ORDER BY CASE prioridad...",
+    "options": {
+      "largeNumbersOutput": "text"  // ✅ RESTAURADO
+    }
+  }
+}
+```
+
+**Resultado**: ✅ Sistema funciona correctamente (confirmado por usuario)
+
+### Lección adicional aprendida:
+
+Al usar `n8n_update_partial_workflow`:
+- ✅ Incluir TODOS los parámetros del nodo en la actualización
+- ❌ NO actualizar solo el parámetro que se quiere cambiar
+- ✅ Verificar inmediatamente después de cada cambio
+
+---
+
+## 🔄 GitHub - Commits Finales
+
+**Total de commits hoy**: 4
+
+1. **a0b39e7**: Fix bug semántico "lista de tareas" (system prompt mejorado)
+2. **a7dfc4e**: Documentación sesión 17 Enero 2026
+3. **f633498**: Fix ORDER BY restaurado + documentación
+4. **476bb0a**: Actualizado TAREAS_PENDIENTES
+5. **70a5e77**: Corregido error faltaba parámetro options ✅ FINAL
+
+✅ **Todo subido exitosamente** a `webcomunicasolutions/segundo-cerebro-ia`
+
+---
+
 **Documentado por**: Claude Code (Sonnet 4.5)
 **Fecha**: 17 Enero 2026
+**Estado final**: ✅ Sistema funcionando correctamente
