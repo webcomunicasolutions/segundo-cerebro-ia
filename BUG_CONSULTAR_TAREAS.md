@@ -2,7 +2,34 @@
 
 **Fecha**: 16 Enero 2026
 **Workflow**: `segundo_cerebro` (ID: `ZI6VUFdg6hEhnCbh`)
-**Estado**: 🚨 **SIN RESOLVER**
+**Estado**: ✅ **RESUELTO**
+
+## 🎉 SOLUCIÓN ENCONTRADA
+
+**Causa raíz**: MySQL Tool v2.5 tiene un bug al transmitir valores **DATETIME** (con hora) a AI Agents cuando se usa como AI Tool.
+
+**Fix aplicado**: Convertir `fecha_vencimiento` de DATETIME a DATE:
+```sql
+-- ❌ ANTES (fallaba)
+SELECT id, titulo, prioridad, estado, fecha_vencimiento, ...
+FROM tareas
+
+-- ✅ AHORA (funciona)
+SELECT id, titulo, prioridad, estado, DATE(fecha_vencimiento) as fecha_vencimiento, ...
+FROM tareas
+```
+
+**Resultado**:
+- ✅ Ejecución 85365: 11 tareas retornadas correctamente
+- ✅ Duración: 5.6 segundos (antes: 13-15s)
+- ✅ AI Agent procesa los datos sin errores
+- ✅ Respuesta formateada perfectamente en Telegram
+
+**Lección aprendida**: Cuando uses MySQL Tool como AI Tool, siempre convierte columnas DATETIME a DATE con `DATE(columna)` para evitar este bug.
+
+---
+
+## 📋 RESUMEN ORIGINAL DEL BUG (PARA REFERENCIA)
 
 ---
 

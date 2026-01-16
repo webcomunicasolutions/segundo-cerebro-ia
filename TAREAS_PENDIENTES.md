@@ -20,23 +20,25 @@
 
 ---
 
-## 🚨 CRÍTICO - BUG EN PRODUCCIÓN
+## ✅ BUGS RESUELTOS
 
-### 0. **FIX: Bug "Consultar tareas" entra en loop infinito** 🐛
+### 0. **FIX: Bug "Consultar tareas" entra en loop infinito** 🐛 ✅ RESUELTO
 
-**Qué pasa**: Cuando usuario pide "lista de tareas", el AI Agent entra en loop de 10 iteraciones y falla con "Max iterations reached". Respuesta vacía en Telegram.
+**Problema**: Cuando usuario pedía "lista de tareas", el AI Agent entraba en loop de 10 iteraciones.
 
-**Lo extraño**: La query SQL ejecuta correctamente y retorna 4 tareas, pero el AI Agent no las procesa.
+**Causa raíz**: MySQL Tool v2.5 tiene un bug al transmitir valores **DATETIME** (con hora) a AI Agents.
 
-**Documentación completa**: Ver `BUG_CONSULTAR_TAREAS.md`
+**Solución aplicada**: Convertir `fecha_vencimiento` de DATETIME a DATE en la query:
+```sql
+SELECT id, titulo, prioridad, estado, DATE(fecha_vencimiento) as fecha_vencimiento, ...
+```
 
-**Hipótesis principal**: El problema está en `WHERE estado != 'completada'`. Proyectos (que funciona) usa `WHERE estado IN ('activo', 'en_espera')`. Puede ser un bug de MySQL Tool v2.5 con operador `!=`.
+**Resultado**:
+- ✅ Ejecución 85365: 11 tareas retornadas correctamente
+- ✅ Sistema funcionando perfectamente
+- ✅ Documentación completa en `BUG_CONSULTAR_TAREAS.md`
 
-**Próximo paso**: Cambiar query a `WHERE estado IN ('pendiente', 'en_progreso')` y probar.
-
-**Estimado**: 15-30 minutos de debugging
-
-**Estado**: 🔴 Bloqueante para uso normal del sistema
+**Lección**: Siempre usar `DATE(columna)` en MySQL Tool cuando la columna es DATETIME y se usa como AI Tool.
 
 ---
 
