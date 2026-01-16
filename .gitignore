@@ -1,0 +1,30 @@
+# Claude Code
+.claude-session
+.claude/
+
+# Archivos temporales
+*.tmp
+*.log
+*.bak
+
+# Archivos grandes (binarios)
+*.docx.bak
+
+# Directorios de cache
+node_modules/
+__pycache__/
+.cache/
+
+# Archivos de entorno
+.env
+.env.local
+
+# Archivos de IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Sistema operativo
+.DS_Store
+Thumbs.db

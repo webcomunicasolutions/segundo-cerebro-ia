@@ -1,0 +1,1 @@
+ https://www.youtube.com/watch?v=0TpON5T-Sw4 estudia esto y hazme un resumen y ayudame a diseñar mi propio sistema, para ello quiero usar como entrada de datos telegram, como base de datos mysql y como automatizador n8n con algun agente con el modelo gemini 2.5 flash 
