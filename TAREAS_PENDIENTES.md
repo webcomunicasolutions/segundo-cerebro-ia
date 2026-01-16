@@ -20,6 +20,26 @@
 
 ---
 
+## 🚨 CRÍTICO - BUG EN PRODUCCIÓN
+
+### 0. **FIX: Bug "Consultar tareas" entra en loop infinito** 🐛
+
+**Qué pasa**: Cuando usuario pide "lista de tareas", el AI Agent entra en loop de 10 iteraciones y falla con "Max iterations reached". Respuesta vacía en Telegram.
+
+**Lo extraño**: La query SQL ejecuta correctamente y retorna 4 tareas, pero el AI Agent no las procesa.
+
+**Documentación completa**: Ver `BUG_CONSULTAR_TAREAS.md`
+
+**Hipótesis principal**: El problema está en `WHERE estado != 'completada'`. Proyectos (que funciona) usa `WHERE estado IN ('activo', 'en_espera')`. Puede ser un bug de MySQL Tool v2.5 con operador `!=`.
+
+**Próximo paso**: Cambiar query a `WHERE estado IN ('pendiente', 'en_progreso')` y probar.
+
+**Estimado**: 15-30 minutos de debugging
+
+**Estado**: 🔴 Bloqueante para uso normal del sistema
+
+---
+
 ## ⏳ PENDIENTE REAL (3 tareas)
 
 ### 1. Exportar Workflow v016 📦
