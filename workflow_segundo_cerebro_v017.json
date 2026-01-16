@@ -1,0 +1,871 @@
+{
+  "name": "segundo_cerebro",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "0f651668-bab0-46a4-8cd9-de526509dd79",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -128,
+        304
+      ],
+      "webhookId": "segundo-cerebro-webhook",
+      "credentials": {
+        "telegramApi": {
+          "id": "RzgkIinUIV35wSlO",
+          "name": "segundo_cerebro_pkm_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=INSERT INTO inbox_log (usuario_id, mensaje_crudo, payload_json, estado, canal_origen) VALUES ('{{ $json.message.from.id }}', '{{ $json.message.text }}', '{{ JSON.stringify($json.message) }}', 'pendiente', 'telegram')",
+        "options": {}
+      },
+      "id": "5d0dfc5e-0afd-498d-8b46-e9239aacd690",
+      "name": "Guardar en inbox_log",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        96,
+        304
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Telegram Trigger').item.json.message.text }}",
+        "options": {
+          "systemMessage": "=Eres el gestor de un Segundo Cerebro Digital. Hoy es {{ $now.format('dd/MM/yyyy') }}.\n\n## 🗣️ INTERPRETACIÓN DE FRASES COMUNES\n\nCuando el usuario dice estas frases, tradúcelas inmediatamente a la acción correcta SIN ENTRAR EN LOOP:\n\n**Ver/Listar** → usar \"Consultar [categoría]\":\n- \"lista de tareas\" → Consultar tareas\n- \"dame las tareas\" → Consultar tareas\n- \"ver mis tareas\" → Consultar tareas\n- \"qué tareas tengo\" → Consultar tareas\n- \"lista de proyectos\" → Consultar proyectos\n- \"dame los proyectos\" → Consultar proyectos\n- \"ver mis ideas\" → Consultar ideas\n- \"lista de personas\" → Consultar personas\n\n**Crear/Guardar** → usar \"Insertar en [categoría]\":\n- \"nueva tarea: X\" → Insertar en tareas\n- \"agregar proyecto: X\" → Insertar en proyectos\n- \"guardar idea: X\" → Insertar en ideas\n- \"anotar persona: X\" → Insertar en personas\n\n**Cambiar/Editar** → primero Consultar para obtener ID, luego Actualizar:\n- \"cambiar tarea X\" → Consultar tareas → Actualizar tarea\n- \"modificar proyecto X\" → Consultar proyectos → Actualizar proyecto\n\n**Eliminar/Borrar** → primero Consultar para obtener ID, luego Eliminar:\n- \"borrar tarea X\" → Consultar tareas → Eliminar tarea\n- \"eliminar proyecto X\" → Consultar proyectos → Eliminar proyecto\n\n**Regla clave**: Si usuario dice \"lista de [categoría]\" o variantes, llama DIRECTAMENTE \"Consultar [categoría]\" sin pensar más.\n\n## TU TRABAJO EN 3 PASOS\n\n**PASO 1 - Entender qué quiere el usuario:**\n- Guardar algo → usar \"Insertar en [categoría]\"\n- Ver qué hay → usar \"Consultar [categoría]\"\n- Cambiar algo → necesitas el ID numérico primero\n- Borrar algo → necesitas el ID numérico primero\n\n**PASO 2 - Si necesitas ID, consulta UNA SOLA VEZ:**\n- Llama \"Consultar [categoría]\" → recibes [{\"id\": 5, \"titulo\": \"...\"}]\n- Si hay múltiples resultados, pregunta al usuario cuál\n- NO vuelvas a consultar después de recibir respuesta\n\n**PASO 3 - Cuando tengas el ID, actúa INMEDIATAMENTE:**\n- Si tienes el ID numérico (ej: 5), usa \"Actualizar\" o \"Eliminar\" AHORA\n- NO consultes de nuevo\n- NO pidas confirmación extra\n- USA EL ID Y EJECUTA\n\n## ⚠️ REGLA CRÍTICA: RESULTADOS VACÍOS\n\nSi una herramienta \"Consultar\" retorna [] (array vacío o sin resultados):\n1. Significa que NO HAY registros de ese tipo\n2. Responde INMEDIATAMENTE: \"No hay [categoría] registradas\" o \"No tienes [categoría]\"\n3. **NO VUELVAS A CONSULTAR**\n4. **NO INTENTES BUSCAR DE NUEVO**\n5. Es una respuesta válida y final\n\nEjemplo:\n```\nUsuario: \"Qué personas tengo\"\nTú: Llamas \"Consultar personas\" → Retorna []\nTú: \"No hay personas registradas\"\nFIN - NO consultar de nuevo, NO buscar alternativas\n```\n\n## REGLA CRÍTICA: Cuando usuario dice \"id X\" o \"la del id X\"\n\nSi usuario responde con un ID (ej: \"id 1\", \"la del id 5\", \"el 3\"):\n1. Extrae el número (1, 5, 3...)\n2. USA ESE NÚMERO INMEDIATAMENTE en Actualizar/Eliminar\n3. NO consultes nada más\n\nEjemplo:\nUsuario: \"Cambiar prioridad de leche a media\"\nTú: Consultas → Hay 2 tareas \"leche\"\nTú: \"¿Cuál? 1. Comprar leche (id: 1), 2. Comprar leche (id: 8)\"\nUsuario: \"la del id 1\"\nTú: INMEDIATAMENTE llamas \"Actualizar tarea\" con id=1, prioridad=\"media\"\nTú: \"✅ Actualizado\"\n\n## EJEMPLO COMPLETO SIN AMBIGÜEDAD\n\n```\nUsuario: \"Cambiar Comprar pan a urgente\"\n\nAcción 1: Consultar tareas\nResultado: [{\"id\": 3, \"titulo\": \"Comprar pan\", \"prioridad\": \"media\"}]\n\nAcción 2: Actualizar tarea\nParámetros: {\"id\": 3, \"prioridad\": \"urgente\"}\n\nRespuesta: \"🔄 Actualizado: Comprar pan ahora es urgente\"\n```\n\n## HERRAMIENTAS (16)\n\n**INSERTAR** - Guardar nuevo:\n- Insertar en tareas: titulo, prioridad, fecha_vencimiento\n- Insertar en proyectos: nombre, estado, fecha_limite\n- Insertar en ideas: titulo, contenido, tipo, tags\n- Insertar en personas: nombre, relacion, datos_contacto\n\n**CONSULTAR** - Ver qué hay (devuelve id como número):\n- Consultar tareas\n- Consultar proyectos\n- Consultar ideas\n- Consultar personas\n\n**ACTUALIZAR** - Cambiar existente (necesita id):\n- Actualizar tarea: id, [campos opcionales]\n- Actualizar proyecto: id, [campos]\n- Actualizar idea: id, [campos]\n- Actualizar persona: id, [campos]\n\n**ELIMINAR** - Borrar (necesita id):\n- Eliminar tarea: id\n- Eliminar proyecto: id\n- Eliminar idea: id\n- Eliminar persona: id\n\n## VALORES PERMITIDOS\n\n- prioridad: baja, media, alta, urgente\n- estado (tarea): pendiente, en_progreso, completada\n- estado (proyecto): activo, en_espera, completado\n- tipo (idea): nota, recurso, aprendizaje\n\n## FORMATO RESPUESTAS\n\n- Guardar: \"✅ [CATEGORÍA] Título - Guardado\"\n- Consultar: \"📊 X resultados: 1. Título (id: X)...\"\n- Consultar vacía: \"No hay [categoría] registradas\"\n- Actualizar: \"🔄 Actualizado: Título\"\n- Eliminar: \"🗑️ Eliminado: Título\""
+        }
+      },
+      "id": "719303f7-4c13-4483-8f9d-59f7e29357c5",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        512,
+        288
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "99fa7c25-a5f3-4ac7-a6b8-9335fc186eac",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        320,
+        528
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "EDGpeO8sJi8YCJQz",
+          "name": "webcomunica api pago"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').item.json.message.from.id }}",
+        "contextWindowLength": 15
+      },
+      "id": "22a6c258-1804-424b-8094-044d9aee8b9c",
+      "name": "Postgres Chat Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        448,
+        528
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "fcCn0Gs1u8rDVAxO",
+          "name": "Postgres NOCODB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=🧠 **Segundo Cerebro**\n\n{{ $json.output }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-response-node-001",
+      "name": "Responder en Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1168,
+        304
+      ],
+      "webhookId": "9392561e-63cb-4dc5-bbfe-17c66f82c620",
+      "credentials": {
+        "telegramApi": {
+          "id": "RzgkIinUIV35wSlO",
+          "name": "segundo_cerebro_pkm_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Insertar una TAREA. Campos: titulo (texto de la tarea), prioridad (SOLO: baja, media, alta, urgente), fecha_vencimiento (YYYY-MM-DD o null si no hay fecha), contexto_adicional (JSON con info extra o null)",
+        "table": {
+          "__rl": true,
+          "value": "tareas",
+          "mode": "list",
+          "cachedResultName": "tareas"
+        },
+        "dataMode": "defineBelow",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "titulo",
+              "value": "={{ $fromAI('titulo', '', 'string') }}"
+            },
+            {
+              "column": "prioridad",
+              "value": "={{ $fromAI('prioridad', '', 'string') }}"
+            },
+            {
+              "column": "fecha_vencimiento",
+              "value": "={{ $fromAI('fecha_vencimiento', '', 'string') }}"
+            },
+            {
+              "column": "contexto_adicional",
+              "value": "={{ $fromAI('contexto_adicional', '', 'string') }}"
+            }
+          ]
+        },
+        "options": {
+          "replaceEmptyStrings": true
+        }
+      },
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.5,
+      "position": [
+        576,
+        528
+      ],
+      "id": "mysql-tool-tareas",
+      "name": "Insertar en tareas",
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Insertar un PROYECTO. Campos: nombre (texto), estado (SOLO: activo, en_espera), fecha_limite (YYYY-MM-DD o null)",
+        "table": {
+          "__rl": true,
+          "value": "proyectos",
+          "mode": "list",
+          "cachedResultName": "proyectos"
+        },
+        "dataMode": "defineBelow",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "nombre",
+              "value": "={{ $fromAI('nombre', '', 'string') }}"
+            },
+            {
+              "column": "estado",
+              "value": "={{ $fromAI('estado', '', 'string') }}"
+            },
+            {
+              "column": "fecha_limite",
+              "value": "={{ $fromAI('fecha_limite', '', 'string') }}"
+            }
+          ]
+        },
+        "options": {
+          "replaceEmptyStrings": true
+        }
+      },
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.5,
+      "position": [
+        704,
+        528
+      ],
+      "id": "mysql-tool-proyectos",
+      "name": "Insertar en proyectos",
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Insertar una IDEA. Campos: titulo (texto), contenido (descripción completa), tipo (SOLO: nota, recurso, aprendizaje), tags (JSON array ej: [\"tech\",\"n8n\"] o null)",
+        "table": {
+          "__rl": true,
+          "value": "ideas",
+          "mode": "list",
+          "cachedResultName": "ideas"
+        },
+        "dataMode": "defineBelow",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "titulo",
+              "value": "={{ $fromAI('titulo', '', 'string') }}"
+            },
+            {
+              "column": "contenido",
+              "value": "={{ $fromAI('contenido', '', 'string') }}"
+            },
+            {
+              "column": "tipo",
+              "value": "={{ $fromAI('tipo', '', 'string') }}"
+            },
+            {
+              "column": "tags",
+              "value": "={{ $fromAI('tags', '', 'string') }}"
+            }
+          ]
+        },
+        "options": {
+          "replaceEmptyStrings": true
+        }
+      },
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.5,
+      "position": [
+        832,
+        528
+      ],
+      "id": "mysql-tool-ideas",
+      "name": "Insertar en ideas",
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Insertar una PERSONA. Campos: nombre (texto), relacion (SOLO: cliente, proveedor, amigo, colega, familia, otro), datos_contacto (JSON con email/telefono o null)",
+        "table": {
+          "__rl": true,
+          "value": "personas",
+          "mode": "list",
+          "cachedResultName": "personas"
+        },
+        "dataMode": "defineBelow",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "nombre",
+              "value": "={{ $fromAI('nombre', '', 'string') }}"
+            },
+            {
+              "column": "relacion",
+              "value": "={{ $fromAI('relacion', '', 'string') }}"
+            },
+            {
+              "column": "datos_contacto",
+              "value": "={{ $fromAI('datos_contacto', '', 'string') }}"
+            }
+          ]
+        },
+        "options": {
+          "replaceEmptyStrings": true
+        }
+      },
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.5,
+      "position": [
+        960,
+        528
+      ],
+      "id": "mysql-tool-personas",
+      "name": "Insertar en personas",
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Consultar TAREAS guardadas. Retorna id (NÚMERO ENTERO como 1, 2, 3...), titulo, prioridad, estado, fecha_vencimiento. USAR SIEMPRE antes de actualizar o eliminar una tarea para obtener su ID numérico.",
+        "operation": "executeQuery",
+        "query": "SELECT id, titulo, prioridad, estado, DATE(fecha_vencimiento) as fecha_vencimiento, DATE(created_at) as fecha_creacion FROM tareas WHERE estado != 'completada' ORDER BY CASE prioridad WHEN 'urgente' THEN 1 WHEN 'alta' THEN 2 WHEN 'media' THEN 3 WHEN 'baja' THEN 4 END, fecha_vencimiento ASC LIMIT 20",
+        "options": {
+          "largeNumbersOutput": "text"
+        }
+      },
+      "id": "mysql-tool-consultar-tareas",
+      "name": "Consultar tareas",
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.5,
+      "position": [
+        576,
+        688
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Consultar PROYECTOS guardados. Retorna id (NÚMERO ENTERO como 1, 2, 3...), nombre, estado, fecha_limite. USAR SIEMPRE antes de actualizar o eliminar un proyecto para obtener su ID numérico.",
+        "operation": "executeQuery",
+        "query": "SELECT id, nombre, estado, fecha_limite, DATE(created_at) as fecha_creacion FROM proyectos WHERE estado IN ('activo', 'en_espera') ORDER BY estado ASC, fecha_limite ASC LIMIT 20",
+        "options": {
+          "largeNumbersOutput": "text"
+        }
+      },
+      "id": "mysql-tool-consultar-proyectos",
+      "name": "Consultar proyectos",
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.5,
+      "position": [
+        704,
+        688
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Consultar IDEAS guardadas. Retorna id (NÚMERO ENTERO como 1, 2, 3...), titulo, contenido, tipo, tags. USAR SIEMPRE antes de actualizar o eliminar una idea para obtener su ID numérico.",
+        "operation": "executeQuery",
+        "query": "SELECT id, titulo, contenido, tipo, tags, DATE(created_at) as fecha_creacion FROM ideas ORDER BY created_at DESC LIMIT 20",
+        "options": {
+          "largeNumbersOutput": "text"
+        }
+      },
+      "id": "mysql-tool-consultar-ideas",
+      "name": "Consultar ideas",
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.5,
+      "position": [
+        832,
+        688
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Consultar PERSONAS guardadas. Retorna id (NÚMERO ENTERO como 1, 2, 3...), nombre, relacion, datos_contacto. USAR SIEMPRE antes de actualizar o eliminar una persona para obtener su ID numérico.",
+        "operation": "executeQuery",
+        "query": "SELECT id, nombre, relacion, datos_contacto, DATE(created_at) as fecha_creacion FROM personas ORDER BY nombre ASC LIMIT 20",
+        "options": {
+          "largeNumbersOutput": "text"
+        }
+      },
+      "id": "mysql-tool-consultar-personas",
+      "name": "Consultar personas",
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.5,
+      "position": [
+        960,
+        688
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Actualizar una TAREA existente. REQUIERE: id (DEBE SER UN NÚMERO ENTERO como 1, 2, 5, 10 - NUNCA un UUID). Obtén el id usando primero 'Consultar tareas'. OPCIONALES: titulo, prioridad (baja/media/alta/urgente), estado (pendiente/en_progreso/completada), fecha_vencimiento (YYYY-MM-DD).",
+        "operation": "executeQuery",
+        "query": "=UPDATE tareas SET titulo = CASE WHEN '{{ $fromAI('titulo') }}' IN ('', 'undefined') THEN titulo ELSE '{{ $fromAI('titulo') }}' END, prioridad = CASE WHEN '{{ $fromAI('prioridad') }}' IN ('', 'undefined') THEN prioridad ELSE '{{ $fromAI('prioridad') }}' END, estado = CASE WHEN '{{ $fromAI('estado') }}' IN ('', 'undefined') THEN estado ELSE '{{ $fromAI('estado') }}' END, fecha_vencimiento = CASE WHEN '{{ $fromAI('fecha_vencimiento') }}' IN ('', 'undefined') THEN fecha_vencimiento WHEN '{{ $fromAI('fecha_vencimiento') }}' = 'null' THEN NULL ELSE '{{ $fromAI('fecha_vencimiento') }}' END WHERE id = {{ $fromAI('id') }}",
+        "options": {
+          "largeNumbersOutput": "text",
+          "replaceEmptyStrings": true
+        }
+      },
+      "id": "mysql-tool-actualizar-tarea",
+      "name": "Actualizar tarea",
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.5,
+      "position": [
+        576,
+        832
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Actualizar un PROYECTO existente. REQUIERE: id (DEBE SER UN NÚMERO ENTERO como 1, 2, 5 - NUNCA un UUID). Obtén el id usando primero 'Consultar proyectos'. OPCIONALES: nombre, estado (activo/en_espera/completado), fecha_limite (YYYY-MM-DD).",
+        "operation": "executeQuery",
+        "query": "=UPDATE proyectos SET nombre = CASE WHEN '{{ $fromAI('nombre') }}' IN ('', 'undefined') THEN nombre ELSE '{{ $fromAI('nombre') }}' END, estado = CASE WHEN '{{ $fromAI('estado') }}' IN ('', 'undefined') THEN estado ELSE '{{ $fromAI('estado') }}' END, fecha_limite = CASE WHEN '{{ $fromAI('fecha_limite') }}' IN ('', 'undefined') THEN fecha_limite WHEN '{{ $fromAI('fecha_limite') }}' = 'null' THEN NULL ELSE '{{ $fromAI('fecha_limite') }}' END WHERE id = {{ $fromAI('id') }}",
+        "options": {
+          "largeNumbersOutput": "text",
+          "replaceEmptyStrings": true
+        }
+      },
+      "id": "mysql-tool-actualizar-proyecto",
+      "name": "Actualizar proyecto",
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.5,
+      "position": [
+        704,
+        832
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Actualizar una IDEA existente. REQUIERE: id (DEBE SER UN NÚMERO ENTERO como 1, 2, 5 - NUNCA un UUID). Obtén el id usando primero 'Consultar ideas'. OPCIONALES: titulo, contenido, tipo (nota/recurso/aprendizaje), tags (JSON array).",
+        "operation": "executeQuery",
+        "query": "=UPDATE ideas SET titulo = CASE WHEN '{{ $fromAI('titulo') }}' IN ('', 'undefined') THEN titulo ELSE '{{ $fromAI('titulo') }}' END, contenido = CASE WHEN '{{ $fromAI('contenido') }}' IN ('', 'undefined') THEN contenido ELSE '{{ $fromAI('contenido') }}' END, tipo = CASE WHEN '{{ $fromAI('tipo') }}' IN ('', 'undefined') THEN tipo ELSE '{{ $fromAI('tipo') }}' END, tags = CASE WHEN '{{ $fromAI('tags') }}' IN ('', 'undefined') THEN tags ELSE '{{ $fromAI('tags') }}' END WHERE id = {{ $fromAI('id') }}",
+        "options": {
+          "largeNumbersOutput": "text",
+          "replaceEmptyStrings": true
+        }
+      },
+      "id": "mysql-tool-actualizar-idea",
+      "name": "Actualizar idea",
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.5,
+      "position": [
+        832,
+        832
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Actualizar una PERSONA existente. REQUIERE: id (DEBE SER UN NÚMERO ENTERO como 1, 2, 5 - NUNCA un UUID). Obtén el id usando primero 'Consultar personas'. OPCIONALES: nombre, relacion, datos_contacto (JSON).",
+        "operation": "executeQuery",
+        "query": "=UPDATE personas SET nombre = CASE WHEN '{{ $fromAI('nombre') }}' IN ('', 'undefined') THEN nombre ELSE '{{ $fromAI('nombre') }}' END, relacion = CASE WHEN '{{ $fromAI('relacion') }}' IN ('', 'undefined') THEN relacion ELSE '{{ $fromAI('relacion') }}' END, datos_contacto = CASE WHEN '{{ $fromAI('datos_contacto') }}' IN ('', 'undefined') THEN datos_contacto ELSE '{{ $fromAI('datos_contacto') }}' END WHERE id = {{ $fromAI('id') }}",
+        "options": {
+          "largeNumbersOutput": "text",
+          "replaceEmptyStrings": true
+        }
+      },
+      "id": "mysql-tool-actualizar-persona",
+      "name": "Actualizar persona",
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.5,
+      "position": [
+        960,
+        832
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Eliminar una TAREA. REQUIERE: id (DEBE SER UN NÚMERO ENTERO como 1, 2, 5 - NUNCA un UUID). Obtén el id usando primero 'Consultar tareas'. CONFIRMA con el usuario antes de eliminar.",
+        "operation": "executeQuery",
+        "query": "=DELETE FROM tareas WHERE id = {{ $fromAI('id') }}",
+        "options": {
+          "largeNumbersOutput": "text"
+        }
+      },
+      "id": "mysql-tool-eliminar-tarea",
+      "name": "Eliminar tarea",
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.5,
+      "position": [
+        576,
+        992
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Eliminar un PROYECTO. REQUIERE: id (DEBE SER UN NÚMERO ENTERO como 1, 2, 5 - NUNCA un UUID). Obtén el id usando primero 'Consultar proyectos'. CONFIRMA con el usuario antes de eliminar.",
+        "operation": "executeQuery",
+        "query": "=DELETE FROM proyectos WHERE id = {{ $fromAI('id') }}",
+        "options": {
+          "largeNumbersOutput": "text"
+        }
+      },
+      "id": "mysql-tool-eliminar-proyecto",
+      "name": "Eliminar proyecto",
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.5,
+      "position": [
+        704,
+        992
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Eliminar una IDEA. REQUIERE: id (DEBE SER UN NÚMERO ENTERO como 1, 2, 5 - NUNCA un UUID). Obtén el id usando primero 'Consultar ideas'. CONFIRMA con el usuario antes de eliminar.",
+        "operation": "executeQuery",
+        "query": "=DELETE FROM ideas WHERE id = {{ $fromAI('id') }}",
+        "options": {
+          "largeNumbersOutput": "text"
+        }
+      },
+      "id": "mysql-tool-eliminar-idea",
+      "name": "Eliminar idea",
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.5,
+      "position": [
+        832,
+        992
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Eliminar una PERSONA. REQUIERE: id (DEBE SER UN NÚMERO ENTERO como 1, 2, 5 - NUNCA un UUID). Obtén el id usando primero 'Consultar personas'. CONFIRMA con el usuario antes de eliminar.",
+        "operation": "executeQuery",
+        "query": "=DELETE FROM personas WHERE id = {{ $fromAI('id') }}",
+        "options": {
+          "largeNumbersOutput": "text"
+        }
+      },
+      "id": "mysql-tool-eliminar-persona",
+      "name": "Eliminar persona",
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.5,
+      "position": [
+        960,
+        992
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Guardar en inbox_log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar en inbox_log": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Responder en Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insertar en tareas": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insertar en proyectos": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insertar en ideas": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insertar en personas": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar tareas": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar proyectos": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar ideas": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar personas": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Actualizar tarea": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Actualizar proyecto": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Actualizar idea": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Actualizar persona": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Eliminar tarea": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Eliminar proyecto": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Eliminar idea": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Eliminar persona": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Europe/Madrid",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "active": true
+}
