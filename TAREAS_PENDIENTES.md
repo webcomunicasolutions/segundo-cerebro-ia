@@ -73,6 +73,38 @@ SELECT id, titulo, prioridad, estado, DATE(fecha_vencimiento) as fecha_vencimien
 
 ---
 
+### 2. **FIX: Restaurado ORDER BY original en "Consultar tareas"** 🔧 ✅ CORREGIDO
+
+**Problema**: Al debuggear el bug DATETIME, simplifiqué innecesariamente el ORDER BY de la query "Consultar tareas":
+- ❌ `ORDER BY id DESC` (perdía lógica de priorización)
+- ✅ `ORDER BY CASE prioridad... fecha_vencimiento ASC` (original mejor)
+
+**Impacto**: Las tareas se presentaban en orden de creación (ID) en lugar de orden lógico de importancia (prioridad + fecha).
+
+**Solución aplicada**: Restaurado ORDER BY original (17 Enero 2026):
+```sql
+ORDER BY CASE prioridad
+  WHEN 'urgente' THEN 1
+  WHEN 'alta' THEN 2
+  WHEN 'media' THEN 3
+  WHEN 'baja' THEN 4
+END, fecha_vencimiento ASC
+```
+
+**Resultado**:
+- ✅ Tareas se presentan en orden lógico (urgente → alta → media → baja)
+- ✅ Dentro de cada prioridad, ordenadas por fecha de vencimiento
+- ✅ UX restaurada a calidad original
+- ✅ Fix DATETIME mantenido: `DATE(fecha_vencimiento)`
+
+**Otras queries**: Consultar proyectos/ideas/personas NO fueron modificadas (no tenían el problema).
+
+**Documentación completa**: `FIX_ORDER_BY_RESTAURADO.md`
+
+**Lección**: Al debuggear, hacer cambios mínimos. Solo modificar lo estrictamente necesario.
+
+---
+
 ## ⏳ PENDIENTE REAL (4 tareas)
 
 ### 1. Test del fix de bug semántico "lista de tareas" 🧪
