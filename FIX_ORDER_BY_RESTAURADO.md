@@ -127,15 +127,91 @@ LIMIT 20
 
 ---
 
-## 📝 Lección Aprendida
+## ⚠️ Error Adicional y Corrección Inmediata
 
-Al debuggear bugs complejos:
+### Error cometido al restaurar (17 Enero 2026):
+
+Al actualizar solo el parámetro `query`, **olvidé incluir el parámetro `options`** en la actualización:
+
+```javascript
+// ❌ Actualización incompleta que causó error
+{
+  "parameters": {
+    "query": "SELECT ... ORDER BY CASE prioridad..."
+    // ❌ FALTÓ: "options": {"largeNumbersOutput": "text"}
+  }
+}
+```
+
+**Error resultante**:
+```
+Error: Could not get parameter
+parameterName: "options"
+```
+
+**Impacto**:
+- Ejecuciones 85374, 85375 fallaron con error "Could not get parameter"
+- El nodo quedó mal configurado temporalmente
+
+### Corrección aplicada (inmediata):
+
+Actualización completa del nodo con **todos** los parámetros necesarios:
+
+```javascript
+{
+  "parameters": {
+    "descriptionType": "manual",
+    "toolDescription": "Consultar TAREAS guardadas...",
+    "operation": "executeQuery",
+    "query": "SELECT id, titulo, prioridad, estado, DATE(fecha_vencimiento) as fecha_vencimiento, DATE(created_at) as fecha_creacion FROM tareas WHERE estado != 'completada' ORDER BY CASE prioridad WHEN 'urgente' THEN 1 WHEN 'alta' THEN 2 WHEN 'media' THEN 3 WHEN 'baja' THEN 4 END, fecha_vencimiento ASC LIMIT 20",
+    "options": {
+      "largeNumbersOutput": "text"  // ✅ RESTAURADO
+    }
+  }
+}
+```
+
+**Resultado**:
+- ✅ Sistema funciona correctamente
+- ✅ Configuración completa restaurada
+- ✅ Confirmado por usuario que funciona
+
+---
+
+## 📝 Lecciones Aprendidas
+
+### Del debugging original:
 1. **Hacer cambios mínimos**: Solo modificar lo estrictamente necesario
 2. **Hipótesis aisladas**: Probar una hipótesis a la vez, no múltiples cambios simultáneos
 3. **Revertir cambios innecesarios**: Cuando se identifica la causa raíz real, revertir cambios exploratorios
 4. **Documentar qué cambió y por qué**: Para facilitar reversión posterior
 
 En este caso, el **ÚNICO** cambio necesario era `fecha_vencimiento` → `DATE(fecha_vencimiento)`.
+
+### De la restauración del ORDER BY:
+5. **Al actualizar nodos de n8n**: Incluir TODOS los parámetros en la actualización, no solo el que se quiere cambiar
+6. **Actualización parcial de nodos**: Puede causar que se pierdan otros parámetros necesarios (como `options`)
+7. **Verificar inmediatamente**: Probar después de cada cambio para detectar errores rápidamente
+8. **Usar `n8n_update_partial_workflow` con cuidado**: Asegurarse de incluir todos los parámetros del nodo, no solo el modificado
+
+**Correcto**:
+```javascript
+"updates": {
+  "parameters": {
+    "query": "...",           // El que queremos cambiar
+    "options": {...}          // ✅ Incluir todos los demás también
+  }
+}
+```
+
+**Incorrecto**:
+```javascript
+"updates": {
+  "parameters": {
+    "query": "..."            // ❌ Solo el que queremos cambiar
+  }
+}
+```
 
 ---
 
