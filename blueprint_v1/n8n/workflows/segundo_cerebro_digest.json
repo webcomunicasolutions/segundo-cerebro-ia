@@ -1,0 +1,225 @@
+{
+  "name": "segundo_cerebro_digest",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "schedule-diario",
+      "name": "Digest Diario 7AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-208, 112]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * 0"
+            }
+          ]
+        }
+      },
+      "id": "schedule-semanal",
+      "name": "Digest Semanal Dom 9AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-208, 336]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  id,\n  titulo,\n  prioridad,\n  DATE_FORMAT(fecha_vencimiento, '%d-%m-%Y') as fecha_vencimiento\nFROM tareas\nWHERE estado != 'completada'\n  AND (fecha_vencimiento <= CURDATE() OR prioridad IN ('urgente', 'alta'))\nORDER BY \n  CASE prioridad \n    WHEN 'urgente' THEN 1 \n    WHEN 'alta' THEN 2 \n    WHEN 'media' THEN 3 \n    WHEN 'baja' THEN 4 \n  END,\n  fecha_vencimiento ASC\nLIMIT 20",
+        "options": {}
+      },
+      "id": "mysql-tareas-hoy",
+      "name": "Query Tareas Hoy",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [16, 112],
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT 'tareas_pendientes' as tipo, COUNT(*) as total FROM tareas WHERE estado != 'completada'\nUNION ALL\nSELECT 'tareas_urgentes' as tipo, COUNT(*) as total FROM tareas WHERE estado != 'completada' AND prioridad IN ('urgente', 'alta')\nUNION ALL\nSELECT 'proyectos_activos' as tipo, COUNT(*) as total FROM proyectos WHERE estado = 'activo'\nUNION ALL\nSELECT 'ideas_semana' as tipo, COUNT(*) as total FROM ideas WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)\nUNION ALL\nSELECT 'tareas_completadas_semana' as tipo, COUNT(*) as total FROM tareas WHERE estado = 'completada'",
+        "options": {}
+      },
+      "id": "mysql-resumen-semana",
+      "name": "Query Resumen Semana",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [80, 280],
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const tareas = $input.all();\nconst hoy = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });\n\nlet html = `\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }\n    h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }\n    h2 { color: #34495e; margin-top: 25px; }\n    .tarea { background: #f8f9fa; padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 4px solid #3498db; }\n    .urgente { border-left-color: #e74c3c; background: #fdf2f2; }\n    .alta { border-left-color: #f39c12; background: #fef9e7; }\n    .prioridad { font-size: 12px; color: #7f8c8d; text-transform: uppercase; }\n    .fecha { color: #95a5a6; font-size: 13px; }\n    .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #95a5a6; font-size: 12px; }\n  </style>\n</head>\n<body>\n  <h1>Buenos dias</h1>\n  <p>Hoy es <strong>${hoy}</strong></p>\n  \n  <h2>Tareas para hoy</h2>\n`;\n\nif (tareas.length === 0) {\n  html += '<p style=\"color: #27ae60;\">No tienes tareas pendientes urgentes!</p>';\n} else {\n  tareas.forEach((item, i) => {\n    const t = item.json;\n    const prioridadClass = t.prioridad === 'urgente' ? 'urgente' : (t.prioridad === 'alta' ? 'alta' : '');\n    html += `\n    <div class=\"tarea ${prioridadClass}\">\n      <strong>${i+1}. ${t.titulo}</strong>\n      <div class=\"prioridad\">Prioridad: ${t.prioridad}</div>\n      ${t.fecha_vencimiento ? `<div class=\"fecha\">${t.fecha_vencimiento}</div>` : ''}\n    </div>`;\n  });\n}\n\nhtml += `\n  <div class=\"footer\">\n    <p>Enviado automaticamente por tu Segundo Cerebro</p>\n  </div>\n</body>\n</html>`;\n\nreturn [{ json: { \n  subject: `Digest Diario - ${tareas.length} tareas pendientes`,\n  html: html,\n  totalTareas: tareas.length\n}}];"
+      },
+      "id": "code-formato-diario",
+      "name": "Formatear Digest Diario",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 112]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Obtener datos de los nodos anteriores\nconst statsRaw = $('Query Resumen Semana').all();\nconst tareasRaw = $('Query Tareas Detalle').all();\nconst proyectosRaw = $('Query Proyectos Detalle').all();\n\nconst hoy = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });\n\n// Convertir stats a objeto\nconst stats = {};\nstatsRaw.forEach(item => {\n  stats[item.json.tipo] = item.json.total;\n});\n\nlet html = `\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f5f5f5; }\n    .container { background: white; padding: 25px; border-radius: 12px; }\n    h1 { color: #2c3e50; border-bottom: 2px solid #9b59b6; padding-bottom: 10px; margin-top: 0; }\n    h2 { color: #34495e; margin-top: 25px; font-size: 18px; }\n    .stat-grid { display: flex; flex-wrap: wrap; gap: 10px; margin: 15px 0; }\n    .stat-card { background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; flex: 1; min-width: 120px; }\n    .stat-number { font-size: 28px; font-weight: bold; color: #2c3e50; }\n    .stat-label { color: #7f8c8d; font-size: 12px; margin-top: 5px; }\n    .urgente .stat-number { color: #e74c3c; }\n    .completadas .stat-number { color: #27ae60; }\n    .tarea { background: #f8f9fa; padding: 10px 12px; margin: 6px 0; border-radius: 6px; border-left: 3px solid #3498db; }\n    .tarea.urgente { border-left-color: #e74c3c; background: #fdf2f2; }\n    .tarea.alta { border-left-color: #f39c12; background: #fef9e7; }\n    .proyecto { background: #f0f7ff; padding: 10px 12px; margin: 6px 0; border-radius: 6px; border-left: 3px solid #9b59b6; }\n    .meta { color: #95a5a6; font-size: 12px; margin-top: 4px; }\n    .footer { margin-top: 25px; padding-top: 15px; border-top: 1px solid #eee; color: #95a5a6; font-size: 11px; text-align: center; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <h1>Resumen Semanal</h1>\n    <p style=\"color: #7f8c8d; margin-top: -10px;\">${hoy}</p>\n    \n    <div class=\"stat-grid\">\n      <div class=\"stat-card\">\n        <div class=\"stat-number\">${stats.tareas_pendientes || 0}</div>\n        <div class=\"stat-label\">Pendientes</div>\n      </div>\n      <div class=\"stat-card urgente\">\n        <div class=\"stat-number\">${stats.tareas_urgentes || 0}</div>\n        <div class=\"stat-label\">Urgentes</div>\n      </div>\n      <div class=\"stat-card\">\n        <div class=\"stat-number\">${stats.proyectos_activos || 0}</div>\n        <div class=\"stat-label\">Proyectos</div>\n      </div>\n      <div class=\"stat-card completadas\">\n        <div class=\"stat-number\">${stats.tareas_completadas_semana || 0}</div>\n        <div class=\"stat-label\">Completadas</div>\n      </div>\n    </div>\n\n    <h2>Tareas Pendientes</h2>\n`;\n\nif (tareasRaw.length === 0) {\n  html += '<p style=\"color: #27ae60;\">No hay tareas pendientes!</p>';\n} else {\n  tareasRaw.forEach((item, i) => {\n    const t = item.json;\n    const prioClass = t.prioridad === 'urgente' ? 'urgente' : (t.prioridad === 'alta' ? 'alta' : '');\n    html += `\n    <div class=\"tarea ${prioClass}\">\n      <strong>${t.titulo}</strong>\n      <div class=\"meta\">${t.prioridad.toUpperCase()}${t.fecha_vencimiento ? ' - ' + t.fecha_vencimiento : ''}</div>\n    </div>`;\n  });\n}\n\nhtml += '<h2>Proyectos Activos</h2>';\n\nif (proyectosRaw.length === 0) {\n  html += '<p style=\"color: #95a5a6;\">No hay proyectos activos</p>';\n} else {\n  proyectosRaw.forEach((item) => {\n    const p = item.json;\n    html += `\n    <div class=\"proyecto\">\n      <strong>${p.nombre}</strong>\n      <div class=\"meta\">${p.estado.toUpperCase()}${p.fecha_limite ? ' - Limite: ' + p.fecha_limite : ''}</div>\n    </div>`;\n  });\n}\n\nhtml += `\n    <div class=\"footer\">\n      Enviado automaticamente por tu Segundo Cerebro\n    </div>\n  </div>\n</body>\n</html>`;\n\nreturn [{ json: { \n  subject: `Resumen Semanal - ${stats.tareas_pendientes || 0} tareas, ${stats.proyectos_activos || 0} proyectos`,\n  html: html\n}}];"
+      },
+      "id": "code-formato-semanal",
+      "name": "Formatear Digest Semanal",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [752, 400]
+    },
+    {
+      "parameters": {
+        "sendTo": "webcomunica@gmail.com",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.html }}",
+        "options": {}
+      },
+      "id": "gmail-diario",
+      "name": "Enviar Email Diario",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [464, 112]
+    },
+    {
+      "parameters": {
+        "sendTo": "webcomunica@gmail.com",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.html }}",
+        "options": {}
+      },
+      "id": "gmail-semanal",
+      "name": "Enviar Email Semanal",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [976, 400]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, titulo, prioridad, DATE_FORMAT(fecha_vencimiento, '%d-%m-%Y') as fecha_vencimiento FROM tareas WHERE estado != 'completada' ORDER BY CASE prioridad WHEN 'urgente' THEN 1 WHEN 'alta' THEN 2 WHEN 'media' THEN 3 WHEN 'baja' THEN 4 END LIMIT 10",
+        "options": {}
+      },
+      "id": "mysql-tareas-semana",
+      "name": "Query Tareas Detalle",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [80, 400],
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, nombre, estado, DATE_FORMAT(fecha_limite, '%d-%m-%Y') as fecha_limite FROM proyectos WHERE estado IN ('activo', 'en_espera') ORDER BY estado, fecha_limite LIMIT 10",
+        "options": {}
+      },
+      "id": "mysql-proyectos-semana",
+      "name": "Query Proyectos Detalle",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [80, 520],
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "id": "merge-semanal",
+      "name": "Esperar Queries",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [304, 400],
+      "parameters": {
+        "mode": "append"
+      }
+    },
+    {
+      "id": "aggregate-final",
+      "name": "Consolidar Items",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [528, 400],
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "allData",
+        "include": "allFieldsExcept"
+      }
+    }
+  ],
+  "connections": {
+    "Digest Diario 7AM": {
+      "main": [[{"node": "Query Tareas Hoy", "type": "main", "index": 0}]]
+    },
+    "Digest Semanal Dom 9AM": {
+      "main": [[
+        {"node": "Query Resumen Semana", "type": "main", "index": 0},
+        {"node": "Query Tareas Detalle", "type": "main", "index": 0},
+        {"node": "Query Proyectos Detalle", "type": "main", "index": 0}
+      ]]
+    },
+    "Query Tareas Hoy": {
+      "main": [[{"node": "Formatear Digest Diario", "type": "main", "index": 0}]]
+    },
+    "Formatear Digest Diario": {
+      "main": [[{"node": "Enviar Email Diario", "type": "main", "index": 0}]]
+    },
+    "Formatear Digest Semanal": {
+      "main": [[{"node": "Enviar Email Semanal", "type": "main", "index": 0}]]
+    },
+    "Query Resumen Semana": {
+      "main": [[{"node": "Esperar Queries", "type": "main", "index": 0}]]
+    },
+    "Query Tareas Detalle": {
+      "main": [[{"node": "Esperar Queries", "type": "main", "index": 0}]]
+    },
+    "Query Proyectos Detalle": {
+      "main": [[{"node": "Esperar Queries", "type": "main", "index": 0}]]
+    },
+    "Esperar Queries": {
+      "main": [[{"node": "Consolidar Items", "type": "main", "index": 0}]]
+    },
+    "Consolidar Items": {
+      "main": [[{"node": "Formatear Digest Semanal", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Madrid",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "meta": {
+    "version": "v1.0",
+    "description": "Digest diario (7AM Lun-Vie) y semanal (Dom 9AM) del Segundo Cerebro",
+    "date": "2026-01-16"
+  }
+}

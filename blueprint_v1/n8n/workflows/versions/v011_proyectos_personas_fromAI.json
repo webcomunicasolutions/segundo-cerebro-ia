@@ -1,0 +1,399 @@
+{
+  "name": "segundo_cerebro",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "0f651668-bab0-46a4-8cd9-de526509dd79",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -128,
+        304
+      ],
+      "webhookId": "segundo-cerebro-webhook",
+      "credentials": {
+        "telegramApi": {
+          "id": "RzgkIinUIV35wSlO",
+          "name": "segundo_cerebro_pkm_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO inbox_log (usuario_id, mensaje_crudo, payload_json, estado, canal_origen) VALUES ('{{ $json.message.from.id }}', '{{ $json.message.text }}', '{{ JSON.stringify($json.message) }}', 'pendiente', 'telegram')",
+        "options": {}
+      },
+      "id": "5d0dfc5e-0afd-498d-8b46-e9239aacd690",
+      "name": "Guardar en inbox_log",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        96,
+        304
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Telegram Trigger').item.json.message.text }}",
+        "options": {
+          "systemMessage": "Eres un asistente que clasifica y guarda información en una base de datos.\n\n## CLASIFICACIÓN\nAnaliza el mensaje y decide:\n- **TAREA**: Acción ejecutable (verbo + objeto). Ej: \"Comprar leche\", \"Llamar a Juan\"\n- **IDEA**: Nota, recurso, aprendizaje. Ej: \"Artículo sobre IA\", \"Idea para mejorar X\"\n- **PROYECTO**: Objetivo con entregable/fecha. Ej: \"Lanzar web en marzo\", \"Rediseño app Q2\"\n- **PERSONA**: Info de contacto. Ej: \"Juan Pérez, cliente, juan@email.com\"\n\n## HERRAMIENTA: Insertar en tareas\n| Campo | Obligatorio | Valores |\n|-------|-------------|---------|\n| titulo | SÍ | Texto de la tarea |\n| prioridad | SÍ | baja, media, alta, urgente |\n\nPrioridad: urgente/ya→urgente, importante→alta, default→media, sin prisa→baja\n\n## HERRAMIENTA: Insertar en ideas\n| Campo | Obligatorio | Valores |\n|-------|-------------|---------|\n| titulo | SÍ | Título de la idea |\n| contenido | NO | Descripción completa |\n| tipo | SÍ | nota, recurso, aprendizaje, diario |\n\nTipo: URL/artículo→recurso, aprendí→aprendizaje, reflexión→diario, default→nota\n\n## HERRAMIENTA: Insertar en proyectos\n| Campo | Obligatorio | Valores |\n|-------|-------------|---------|\n| nombre | SÍ | Nombre del proyecto |\n| estado | SÍ | activo, en_espera, completado, cancelado |\n\nEstado: default→activo, pausado→en_espera\n\n## HERRAMIENTA: Insertar en personas\n| Campo | Obligatorio | Valores |\n|-------|-------------|---------|\n| nombre | SÍ | Nombre de la persona |\n| relacion | SÍ | cliente, proveedor, amigo, colega, familia, otro |\n\n## EJEMPLOS\n\"Comprar pan\" → TAREA: titulo=\"Comprar pan\", prioridad=\"media\"\n\"Artículo sobre IA\" → IDEA: titulo=\"Artículo sobre IA\", tipo=\"recurso\"\n\"Proyecto: Lanzar web en marzo\" → PROYECTO: nombre=\"Lanzar web en marzo\", estado=\"activo\"\n\"María García, clienta, maria@email.com\" → PERSONA: nombre=\"María García\", relacion=\"cliente\"\n\n## RESPUESTA\n✅ [TIPO] Título\n📊 Campo: valor\n💾 Guardado correctamente"
+        }
+      },
+      "id": "719303f7-4c13-4483-8f9d-59f7e29357c5",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        512,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "99fa7c25-a5f3-4ac7-a6b8-9335fc186eac",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        320,
+        528
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "EDGpeO8sJi8YCJQz",
+          "name": "webcomunica api pago"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').item.json.message.from.id }}"
+      },
+      "id": "22a6c258-1804-424b-8094-044d9aee8b9c",
+      "name": "Postgres Chat Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        448,
+        528
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "fcCn0Gs1u8rDVAxO",
+          "name": "Postgres NOCODB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=🧠 **Segundo Cerebro**\n\n{{ $json.output }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-response-node-001",
+      "name": "Responder en Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1168,
+        304
+      ],
+      "webhookId": "9392561e-63cb-4dc5-bbfe-17c66f82c620",
+      "credentials": {
+        "telegramApi": {
+          "id": "RzgkIinUIV35wSlO",
+          "name": "segundo_cerebro_pkm_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Insertar una TAREA. Campos: titulo (texto de la tarea), prioridad (SOLO: baja, media, alta, urgente)",
+        "table": {
+          "__rl": true,
+          "value": "tareas",
+          "mode": "list",
+          "cachedResultName": "tareas"
+        },
+        "dataMode": "defineBelow",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "titulo",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('titulo', ``, 'string') }}"
+            },
+            {
+              "column": "prioridad",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('prioridad', ``, 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.5,
+      "position": [
+        576,
+        528
+      ],
+      "id": "mysql-tool-tareas",
+      "name": "Insertar en tareas",
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Insertar un PROYECTO. Campos: nombre (texto), estado (SOLO: activo, en_espera, completado, cancelado)",
+        "table": {
+          "__rl": true,
+          "value": "proyectos",
+          "mode": "list",
+          "cachedResultName": "proyectos"
+        },
+        "dataMode": "defineBelow",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "nombre",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('nombre', ``, 'string') }}"
+            },
+            {
+              "column": "estado",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('estado', ``, 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.5,
+      "position": [
+        704,
+        528
+      ],
+      "id": "mysql-tool-proyectos",
+      "name": "Insertar en proyectos",
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Insertar una IDEA. Campos: titulo (texto), contenido (descripción), tipo (SOLO: nota, recurso, aprendizaje, diario)",
+        "table": {
+          "__rl": true,
+          "value": "ideas",
+          "mode": "list",
+          "cachedResultName": "ideas"
+        },
+        "dataMode": "defineBelow",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "titulo",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('titulo', ``, 'string') }}"
+            },
+            {
+              "column": "contenido",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('contenido', ``, 'string') }}"
+            },
+            {
+              "column": "tipo",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('tipo', ``, 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.5,
+      "position": [
+        832,
+        528
+      ],
+      "id": "mysql-tool-ideas",
+      "name": "Insertar en ideas",
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Insertar una PERSONA. Campos: nombre (texto), relacion (SOLO: cliente, proveedor, amigo, colega, familia, otro)",
+        "table": {
+          "__rl": true,
+          "value": "personas",
+          "mode": "list",
+          "cachedResultName": "personas"
+        },
+        "dataMode": "defineBelow",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "nombre",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('nombre', ``, 'string') }}"
+            },
+            {
+              "column": "relacion",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('relacion', ``, 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.5,
+      "position": [
+        960,
+        528
+      ],
+      "id": "mysql-tool-personas",
+      "name": "Insertar en personas",
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Guardar en inbox_log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar en inbox_log": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Responder en Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insertar en tareas": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insertar en proyectos": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insertar en ideas": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insertar en personas": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

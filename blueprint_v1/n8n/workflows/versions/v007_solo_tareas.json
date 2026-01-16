@@ -1,0 +1,255 @@
+{
+  "updatedAt": "2026-01-14T08:09:36.151Z",
+  "createdAt": "2026-01-13T16:52:29.586Z",
+  "id": "ZI6VUFdg6hEhnCbh",
+  "name": "segundo_cerebro",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "0f651668-bab0-46a4-8cd9-de526509dd79",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -128,
+        304
+      ],
+      "webhookId": "segundo-cerebro-webhook",
+      "credentials": {
+        "telegramApi": {
+          "id": "RzgkIinUIV35wSlO",
+          "name": "segundo_cerebro_pkm_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO inbox_log (usuario_id, mensaje_crudo, payload_json, estado, canal_origen) VALUES ('{{ $json.message.from.id }}', '{{ $json.message.text }}', '{{ JSON.stringify($json.message) }}', 'pendiente', 'telegram')",
+        "options": {}
+      },
+      "id": "5d0dfc5e-0afd-498d-8b46-e9239aacd690",
+      "name": "Guardar en inbox_log",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        96,
+        304
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Telegram Trigger').item.json.message.text }}",
+        "options": {
+          "systemMessage": "Eres un asistente que guarda tareas en una base de datos.\n\n## TU ÚNICA FUNCIÓN\nCuando el usuario te envíe un mensaje, debes guardarlo como TAREA usando la herramienta \"Insertar en tareas\".\n\n## HERRAMIENTA: Insertar en tareas\n\nEsta herramienta espera EXACTAMENTE estos campos:\n\n| Campo | Obligatorio | Valores permitidos |\n|-------|-------------|-------------------|\n| titulo | SÍ | El texto de la tarea |\n| prioridad | SÍ | baja, media, alta, urgente |\n\n## CÓMO DETERMINAR LA PRIORIDAD\n- \"urgente\" o \"ya\" o \"ahora\" → prioridad: urgente\n- \"importante\" o \"pronto\" → prioridad: alta\n- Por defecto → prioridad: media\n- \"cuando pueda\" o \"sin prisa\" → prioridad: baja\n\n## EJEMPLO\nUsuario: \"Comprar leche\"\nAcción: Usa \"Insertar en tareas\" con:\n- titulo: \"Comprar leche\"\n- prioridad: \"media\"\n\n## DESPUÉS DE GUARDAR\nResponde confirmando:\n✅ Tarea guardada: [título]\n📊 Prioridad: [prioridad]"
+        }
+      },
+      "id": "719303f7-4c13-4483-8f9d-59f7e29357c5",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        576,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "99fa7c25-a5f3-4ac7-a6b8-9335fc186eac",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        320,
+        528
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "EDGpeO8sJi8YCJQz",
+          "name": "webcomunica api pago"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').item.json.message.from.id }}"
+      },
+      "id": "22a6c258-1804-424b-8094-044d9aee8b9c",
+      "name": "Postgres Chat Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        448,
+        528
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "fcCn0Gs1u8rDVAxO",
+          "name": "Postgres NOCODB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=🧠 **Segundo Cerebro**\n\n{{ $json.output }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-response-node-001",
+      "name": "Responder en Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1168,
+        304
+      ],
+      "webhookId": "9392561e-63cb-4dc5-bbfe-17c66f82c620",
+      "credentials": {
+        "telegramApi": {
+          "id": "RzgkIinUIV35wSlO",
+          "name": "segundo_cerebro_pkm_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Insertar una TAREA en la base de datos. Usa esta herramienta cuando el usuario envíe una acción ejecutable como 'Comprar leche', 'Llamar a Juan', 'Enviar email'. SOLO envía estos campos: titulo (obligatorio, texto de la tarea), prioridad (opcional: baja, media, alta o urgente)",
+        "table": {
+          "__rl": true,
+          "value": "tareas",
+          "mode": "list",
+          "cachedResultName": "tareas"
+        },
+        "dataMode": "defineBelow",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "titulo",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('titulo', ``, 'string') }}"
+            },
+            {
+              "column": "prioridad",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('prioridad', ``, 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.5,
+      "position": [
+        576,
+        528
+      ],
+      "id": "mysql-tool-tareas",
+      "name": "Insertar en tareas",
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Guardar en inbox_log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar en inbox_log": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Responder en Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insertar en tareas": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Europe/Madrid",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "triggerCount": 1,
+  "tags": []
+}

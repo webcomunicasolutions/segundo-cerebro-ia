@@ -1,0 +1,536 @@
+{
+  "name": "02 - Segundo Cerebro: Clasificador Inteligente",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["message"]
+      },
+      "id": "telegram-trigger",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 300],
+      "webhookId": "segundo-cerebro-clasificador",
+      "credentials": {
+        "telegramApi": {
+          "id": "{{TELEGRAM_CREDENTIAL_ID}}",
+          "name": "Telegram Bot - Segundo Cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "mensaje",
+              "name": "mensaje",
+              "value": "={{ $json.message.text }}",
+              "type": "string"
+            },
+            {
+              "id": "usuario",
+              "name": "usuario",
+              "value": "={{ $json.message.from.username || $json.message.from.first_name }}",
+              "type": "string"
+            },
+            {
+              "id": "usuario_id",
+              "name": "usuario_id",
+              "value": "={{ String($json.message.from.id) }}",
+              "type": "string"
+            },
+            {
+              "id": "chat_id",
+              "name": "chat_id",
+              "value": "={{ $json.message.chat.id }}",
+              "type": "number"
+            },
+            {
+              "id": "fecha",
+              "name": "fecha",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "payload_original",
+              "name": "payload_original",
+              "value": "={{ JSON.stringify($json.message) }}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "set-preparar-datos",
+      "name": "Preparar Datos",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "model": "gemini-2.0-flash",
+        "options": {
+          "temperature": 0.1,
+          "maxOutputTokens": 1024
+        }
+      },
+      "id": "gemini-model",
+      "name": "Gemini Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [440, 500],
+      "credentials": {
+        "googleGeminiApi": {
+          "id": "{{GEMINI_CREDENTIAL_ID}}",
+          "name": "Gemini - Segundo Cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Eres un clasificador inteligente para un sistema de Segundo Cerebro basado en el método PARA.\n\nTu tarea es analizar el mensaje del usuario y determinar a qué categoría pertenece:\n\n1. **PERSONA**: Información sobre contactos, clientes, relaciones (nombres, datos de contacto, contexto)\n2. **PROYECTO**: Esfuerzos con objetivo definido y fecha límite (ej: \"Lanzar website para abril\")\n3. **IDEA**: Notas, recursos, aprendizajes, enlaces (sin fecha límite)\n4. **TAREA**: Acciones ejecutables en formato \"verbo + objeto\" (ej: \"Llamar a Juan\", \"Comprar leche\")\n\n**Reglas de clasificación**:\n- Si contiene un verbo de acción + objeto específico → TAREA\n- Si menciona un objetivo con plazo o entregable → PROYECTO\n- Si es información sobre una persona (nombre, teléfono, email) → PERSONA\n- Si es conocimiento, recurso, link, nota → IDEA\n- En caso de duda, pregunta: \"¿Esto requiere acción inmediata?\" → SÍ: TAREA, NO: IDEA\n\n**Mensaje del usuario**:\n{{ $json.mensaje }}\n\n**Fecha de captura**: {{ $json.fecha }}\n**Usuario**: {{ $json.usuario }}\n\nResponde ÚNICAMENTE con un JSON válido (sin markdown, sin explicación), con esta estructura exacta:\n{\n  \"categoria\": \"TAREA|PROYECTO|IDEA|PERSONA\",\n  \"confidence\": 0.95,\n  \"titulo_sugerido\": \"Título corto descriptivo\",\n  \"prioridad\": \"baja|media|alta|urgente\",\n  \"tags\": [\"tag1\", \"tag2\"],\n  \"razonamiento\": \"Explicación breve de por qué se clasificó así\"\n}",
+        "hasOutputParser": false,
+        "options": {}
+      },
+      "id": "gemini-clasificar",
+      "name": "Gemini: Clasificar",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extraer el JSON de la respuesta de Gemini\nconst respuestaGemini = $input.first().json.text;\n\n// Limpiar posible markdown\nlet jsonStr = respuestaGemini\n  .replace(/```json\\n?/g, '')\n  .replace(/```\\n?/g, '')\n  .trim();\n\ntry {\n  const clasificacion = JSON.parse(jsonStr);\n  \n  // Obtener datos del nodo anterior (Preparar Datos)\n  const datosOriginales = $('Preparar Datos').first().json;\n  \n  return {\n    // Datos originales\n    mensaje: datosOriginales.mensaje,\n    usuario: datosOriginales.usuario,\n    usuario_id: datosOriginales.usuario_id,\n    chat_id: datosOriginales.chat_id,\n    fecha: datosOriginales.fecha,\n    payload_original: datosOriginales.payload_original,\n    \n    // Clasificación de Gemini\n    categoria: clasificacion.categoria || 'IDEA',\n    confidence: clasificacion.confidence || 0.5,\n    titulo_sugerido: clasificacion.titulo_sugerido || datosOriginales.mensaje.substring(0, 100),\n    prioridad: clasificacion.prioridad || 'media',\n    tags: JSON.stringify(clasificacion.tags || []),\n    razonamiento: clasificacion.razonamiento || 'Sin razonamiento disponible'\n  };\n} catch (error) {\n  // Fallback si el JSON no es válido\n  const datosOriginales = $('Preparar Datos').first().json;\n  return {\n    mensaje: datosOriginales.mensaje,\n    usuario: datosOriginales.usuario,\n    usuario_id: datosOriginales.usuario_id,\n    chat_id: datosOriginales.chat_id,\n    fecha: datosOriginales.fecha,\n    payload_original: datosOriginales.payload_original,\n    categoria: 'IDEA',\n    confidence: 0.3,\n    titulo_sugerido: datosOriginales.mensaje.substring(0, 100),\n    prioridad: 'media',\n    tags: '[]',\n    razonamiento: 'Error parseando respuesta de IA: ' + error.message\n  };\n}"
+      },
+      "id": "code-parsear-json",
+      "name": "Parsear Respuesta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=INSERT INTO inbox_log (usuario_id, mensaje_crudo, payload_json, estado, categoria_asignada, confianza_ia, razonamiento_ia) VALUES ('{{ $json.usuario_id }}', '{{ $json.mensaje.replace(/'/g, \"''\") }}', '{{ $json.payload_original.replace(/'/g, \"''\") }}', 'procesado', '{{ $json.categoria }}', {{ $json.confidence }}, '{{ $json.razonamiento.replace(/'/g, \"''\") }}')",
+        "options": {}
+      },
+      "id": "mysql-inbox-log",
+      "name": "MySQL: inbox_log",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [880, 300],
+      "credentials": {
+        "mySql": {
+          "id": "{{MYSQL_CREDENTIAL_ID}}",
+          "name": "MySQL - Segundo Cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "rules": [
+            {
+              "outputKey": "TAREA",
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parsear Respuesta').first().json.categoria }}",
+                    "rightValue": "TAREA",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "outputKey": "PROYECTO",
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parsear Respuesta').first().json.categoria }}",
+                    "rightValue": "PROYECTO",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "outputKey": "IDEA",
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parsear Respuesta').first().json.categoria }}",
+                    "rightValue": "IDEA",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "outputKey": "PERSONA",
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parsear Respuesta').first().json.categoria }}",
+                    "rightValue": "PERSONA",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "switch-categoria",
+      "name": "Switch: Categoria",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=INSERT INTO tareas (titulo, estado, prioridad, contexto_adicional) VALUES ('{{ $('Parsear Respuesta').first().json.titulo_sugerido.replace(/'/g, \"''\") }}', 'pendiente', '{{ $('Parsear Respuesta').first().json.prioridad }}', '{{ JSON.stringify({mensaje_original: $('Parsear Respuesta').first().json.mensaje, tags: JSON.parse($('Parsear Respuesta').first().json.tags), razonamiento: $('Parsear Respuesta').first().json.razonamiento}).replace(/'/g, \"''\") }}')",
+        "options": {}
+      },
+      "id": "mysql-tareas",
+      "name": "MySQL: tareas",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [1320, 80],
+      "credentials": {
+        "mySql": {
+          "id": "{{MYSQL_CREDENTIAL_ID}}",
+          "name": "MySQL - Segundo Cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=INSERT INTO proyectos (nombre, estado, metadata) VALUES ('{{ $('Parsear Respuesta').first().json.titulo_sugerido.replace(/'/g, \"''\") }}', 'activo', '{{ JSON.stringify({mensaje_original: $('Parsear Respuesta').first().json.mensaje, tags: JSON.parse($('Parsear Respuesta').first().json.tags), razonamiento: $('Parsear Respuesta').first().json.razonamiento}).replace(/'/g, \"''\") }}')",
+        "options": {}
+      },
+      "id": "mysql-proyectos",
+      "name": "MySQL: proyectos",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [1320, 240],
+      "credentials": {
+        "mySql": {
+          "id": "{{MYSQL_CREDENTIAL_ID}}",
+          "name": "MySQL - Segundo Cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=INSERT INTO ideas (titulo, contenido, tipo, tags) VALUES ('{{ $('Parsear Respuesta').first().json.titulo_sugerido.replace(/'/g, \"''\") }}', '{{ $('Parsear Respuesta').first().json.mensaje.replace(/'/g, \"''\") }}', 'nota', '{{ $('Parsear Respuesta').first().json.tags }}')",
+        "options": {}
+      },
+      "id": "mysql-ideas",
+      "name": "MySQL: ideas",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [1320, 400],
+      "credentials": {
+        "mySql": {
+          "id": "{{MYSQL_CREDENTIAL_ID}}",
+          "name": "MySQL - Segundo Cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=INSERT INTO personas (nombre, relacion, datos_contacto) VALUES ('{{ $('Parsear Respuesta').first().json.titulo_sugerido.replace(/'/g, \"''\") }}', 'contacto', '{{ JSON.stringify({mensaje_original: $('Parsear Respuesta').first().json.mensaje, tags: JSON.parse($('Parsear Respuesta').first().json.tags)}).replace(/'/g, \"''\") }}')",
+        "options": {}
+      },
+      "id": "mysql-personas",
+      "name": "MySQL: personas",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [1320, 560],
+      "credentials": {
+        "mySql": {
+          "id": "{{MYSQL_CREDENTIAL_ID}}",
+          "name": "MySQL - Segundo Cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parsear Respuesta').first().json.chat_id }}",
+        "text": "=✅ *Guardado como Tarea*\n\n📌 {{ $('Parsear Respuesta').first().json.titulo_sugerido }}\n\n_Prioridad: {{ $('Parsear Respuesta').first().json.prioridad }}_\n_Confianza: {{ Math.round($('Parsear Respuesta').first().json.confidence * 100) }}%_",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-confirmar-tarea",
+      "name": "Confirmar: Tarea",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1540, 80],
+      "credentials": {
+        "telegramApi": {
+          "id": "{{TELEGRAM_CREDENTIAL_ID}}",
+          "name": "Telegram Bot - Segundo Cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parsear Respuesta').first().json.chat_id }}",
+        "text": "=📁 *Guardado como Proyecto*\n\n🎯 {{ $('Parsear Respuesta').first().json.titulo_sugerido }}\n\n_Confianza: {{ Math.round($('Parsear Respuesta').first().json.confidence * 100) }}%_",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-confirmar-proyecto",
+      "name": "Confirmar: Proyecto",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1540, 240],
+      "credentials": {
+        "telegramApi": {
+          "id": "{{TELEGRAM_CREDENTIAL_ID}}",
+          "name": "Telegram Bot - Segundo Cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parsear Respuesta').first().json.chat_id }}",
+        "text": "=💡 *Guardado como Idea*\n\n📝 {{ $('Parsear Respuesta').first().json.titulo_sugerido }}\n\n_Confianza: {{ Math.round($('Parsear Respuesta').first().json.confidence * 100) }}%_",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-confirmar-idea",
+      "name": "Confirmar: Idea",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1540, 400],
+      "credentials": {
+        "telegramApi": {
+          "id": "{{TELEGRAM_CREDENTIAL_ID}}",
+          "name": "Telegram Bot - Segundo Cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parsear Respuesta').first().json.chat_id }}",
+        "text": "=👥 *Guardado como Persona*\n\n🧑 {{ $('Parsear Respuesta').first().json.titulo_sugerido }}\n\n_Confianza: {{ Math.round($('Parsear Respuesta').first().json.confidence * 100) }}%_",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-confirmar-persona",
+      "name": "Confirmar: Persona",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1540, 560],
+      "credentials": {
+        "telegramApi": {
+          "id": "{{TELEGRAM_CREDENTIAL_ID}}",
+          "name": "Telegram Bot - Segundo Cerebro"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Preparar Datos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Datos": {
+      "main": [
+        [
+          {
+            "node": "Gemini: Clasificar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Gemini: Clasificar",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini: Clasificar": {
+      "main": [
+        [
+          {
+            "node": "Parsear Respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parsear Respuesta": {
+      "main": [
+        [
+          {
+            "node": "MySQL: inbox_log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MySQL: inbox_log": {
+      "main": [
+        [
+          {
+            "node": "Switch: Categoria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch: Categoria": {
+      "main": [
+        [
+          {
+            "node": "MySQL: tareas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "MySQL: proyectos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "MySQL: ideas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "MySQL: personas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MySQL: tareas": {
+      "main": [
+        [
+          {
+            "node": "Confirmar: Tarea",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MySQL: proyectos": {
+      "main": [
+        [
+          {
+            "node": "Confirmar: Proyecto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MySQL: ideas": {
+      "main": [
+        [
+          {
+            "node": "Confirmar: Idea",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MySQL: personas": {
+      "main": [
+        [
+          {
+            "node": "Confirmar: Persona",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["segundo-cerebro", "fase-3"],
+  "triggerCount": 1
+}

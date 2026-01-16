@@ -1,0 +1,324 @@
+{
+  "name": "segundo_cerebro",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["message"],
+        "additionalFields": {}
+      },
+      "id": "0f651668-bab0-46a4-8cd9-de526509dd79",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [-128, 304],
+      "webhookId": "segundo-cerebro-webhook",
+      "credentials": {
+        "telegramApi": {
+          "id": "RzgkIinUIV35wSlO",
+          "name": "segundo_cerebro_pkm_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO inbox_log (usuario_id, mensaje_crudo, payload_json, estado, canal_origen) VALUES ('{{ $json.message.from.id }}', '{{ $json.message.text }}', '{{ JSON.stringify($json.message) }}', 'pendiente', 'telegram')",
+        "options": {}
+      },
+      "id": "5d0dfc5e-0afd-498d-8b46-e9239aacd690",
+      "name": "Guardar en inbox_log",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [96, 304],
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Telegram Trigger').item.json.message.text }}",
+        "options": {
+          "systemMessage": "Eres el gestor de un Segundo Cerebro Digital. Tu misión es clasificar y guardar información usando las herramientas disponibles.\n\n## FECHA ACTUAL\nHoy es: {{ $now.format('YYYY-MM-DD') }}\n\n## REGLAS DE ORO\n\n### 1. FECHAS\n- Si el usuario dice \"mañana\", CALCULA la fecha exacta YYYY-MM-DD\n- Si dice \"próximo lunes\", calcula la fecha real\n- NUNCA envíes texto relativo (\"mañana\", \"la semana que viene\")\n- Si no hay fecha, envía null\n\n### 2. ENUMS (Valores estrictos)\n- Prioridad: SOLO 'baja', 'media', 'alta', 'urgente' (Default: 'media')\n- Estado Proyecto: SOLO 'activo', 'en_espera' (Default: 'activo')\n- Tipo Idea: SOLO 'nota', 'recurso', 'aprendizaje' (Default: 'nota')\n- Relación Persona: SOLO 'cliente', 'proveedor', 'amigo', 'colega', 'familia', 'otro' (Default: 'otro')\n\n### 3. JSON\n- tags: STRING con JSON válido, ej: '[\"tech\", \"n8n\"]'\n- datos_contacto: STRING con JSON, ej: '{\"email\": \"x@y.com\", \"tel\": \"123\"}'\n- contexto_adicional: STRING con JSON para info extra\n\n## SELECCIÓN DE HERRAMIENTA\n\n| Señal | Herramienta |\n|-------|-------------|\n| Verbo de acción (llamar, comprar, enviar, revisar) | Insertar en tareas |\n| Objetivo largo plazo, deadline, entregable | Insertar en proyectos |\n| URL, artículo, nota, aprendizaje, reflexión | Insertar en ideas |\n| Nombre de persona, contacto, relación | Insertar en personas |\n\n## EJEMPLOS\n\n\"Comprar leche mañana\" →\n- Herramienta: Insertar en tareas\n- titulo: \"Comprar leche\"\n- prioridad: \"media\"\n- fecha_vencimiento: \"2026-01-17\" (fecha calculada)\n- contexto_adicional: null\n\n\"Artículo sobre IA https://example.com\" →\n- Herramienta: Insertar en ideas\n- titulo: \"Artículo sobre IA\"\n- contenido: \"https://example.com\"\n- tipo: \"recurso\"\n- tags: '[\"ia\", \"lectura\"]'\n\n\"María García, clienta, maria@test.com, 600123456\" →\n- Herramienta: Insertar en personas\n- nombre: \"María García\"\n- relacion: \"cliente\"\n- datos_contacto: '{\"email\": \"maria@test.com\", \"telefono\": \"600123456\"}'\n\n\"Lanzar web para marzo\" →\n- Herramienta: Insertar en proyectos\n- nombre: \"Lanzar web\"\n- estado: \"activo\"\n- fecha_limite: \"2026-03-31\"\n\n## RESPUESTA AL USUARIO\n✅ [CATEGORÍA] Título\n📅 Fecha: valor (si aplica)\n📊 Detalles guardados\n💾 Guardado correctamente"
+        }
+      },
+      "id": "719303f7-4c13-4483-8f9d-59f7e29357c5",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [512, 288]
+    },
+    {
+      "parameters": {
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "99fa7c25-a5f3-4ac7-a6b8-9335fc186eac",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [320, 528],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "EDGpeO8sJi8YCJQz",
+          "name": "webcomunica api pago"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').item.json.message.from.id }}"
+      },
+      "id": "22a6c258-1804-424b-8094-044d9aee8b9c",
+      "name": "Postgres Chat Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [448, 528],
+      "credentials": {
+        "postgres": {
+          "id": "fcCn0Gs1u8rDVAxO",
+          "name": "Postgres NOCODB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=🧠 **Segundo Cerebro**\n\n{{ $json.output }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-response-node-001",
+      "name": "Responder en Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1168, 304],
+      "webhookId": "9392561e-63cb-4dc5-bbfe-17c66f82c620",
+      "credentials": {
+        "telegramApi": {
+          "id": "RzgkIinUIV35wSlO",
+          "name": "segundo_cerebro_pkm_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Insertar una TAREA. Campos: titulo (texto de la tarea), prioridad (SOLO: baja, media, alta, urgente), fecha_vencimiento (YYYY-MM-DD o null si no hay fecha), contexto_adicional (JSON con info extra o null)",
+        "table": {
+          "__rl": true,
+          "value": "tareas",
+          "mode": "list",
+          "cachedResultName": "tareas"
+        },
+        "dataMode": "defineBelow",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "titulo",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('titulo', ``, 'string') }}"
+            },
+            {
+              "column": "prioridad",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('prioridad', ``, 'string') }}"
+            },
+            {
+              "column": "fecha_vencimiento",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fecha_vencimiento', ``, 'string') }}"
+            },
+            {
+              "column": "contexto_adicional",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('contexto_adicional', ``, 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.5,
+      "position": [576, 528],
+      "id": "mysql-tool-tareas",
+      "name": "Insertar en tareas",
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Insertar un PROYECTO. Campos: nombre (texto), estado (SOLO: activo, en_espera), fecha_limite (YYYY-MM-DD o null)",
+        "table": {
+          "__rl": true,
+          "value": "proyectos",
+          "mode": "list",
+          "cachedResultName": "proyectos"
+        },
+        "dataMode": "defineBelow",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "nombre",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('nombre', ``, 'string') }}"
+            },
+            {
+              "column": "estado",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('estado', ``, 'string') }}"
+            },
+            {
+              "column": "fecha_limite",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fecha_limite', ``, 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.5,
+      "position": [704, 528],
+      "id": "mysql-tool-proyectos",
+      "name": "Insertar en proyectos",
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Insertar una IDEA. Campos: titulo (texto), contenido (descripción completa), tipo (SOLO: nota, recurso, aprendizaje), tags (JSON array ej: [\"tech\",\"n8n\"] o null)",
+        "table": {
+          "__rl": true,
+          "value": "ideas",
+          "mode": "list",
+          "cachedResultName": "ideas"
+        },
+        "dataMode": "defineBelow",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "titulo",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('titulo', ``, 'string') }}"
+            },
+            {
+              "column": "contenido",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('contenido', ``, 'string') }}"
+            },
+            {
+              "column": "tipo",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('tipo', ``, 'string') }}"
+            },
+            {
+              "column": "tags",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('tags', ``, 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.5,
+      "position": [832, 528],
+      "id": "mysql-tool-ideas",
+      "name": "Insertar en ideas",
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Insertar una PERSONA. Campos: nombre (texto), relacion (SOLO: cliente, proveedor, amigo, colega, familia, otro), datos_contacto (JSON con email/telefono o null)",
+        "table": {
+          "__rl": true,
+          "value": "personas",
+          "mode": "list",
+          "cachedResultName": "personas"
+        },
+        "dataMode": "defineBelow",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "nombre",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('nombre', ``, 'string') }}"
+            },
+            {
+              "column": "relacion",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('relacion', ``, 'string') }}"
+            },
+            {
+              "column": "datos_contacto",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('datos_contacto', ``, 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.5,
+      "position": [960, 528],
+      "id": "mysql-tool-personas",
+      "name": "Insertar en personas",
+      "credentials": {
+        "mySql": {
+          "id": "yTsefijtH5HVvPzn",
+          "name": "segundo_cerebro"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [[{"node": "Guardar en inbox_log", "type": "main", "index": 0}]]
+    },
+    "Guardar en inbox_log": {
+      "main": [[{"node": "AI Agent", "type": "main", "index": 0}]]
+    },
+    "AI Agent": {
+      "main": [[{"node": "Responder en Telegram", "type": "main", "index": 0}]]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [[{"node": "AI Agent", "type": "ai_languageModel", "index": 0}]]
+    },
+    "Postgres Chat Memory": {
+      "ai_memory": [[{"node": "AI Agent", "type": "ai_memory", "index": 0}]]
+    },
+    "Insertar en tareas": {
+      "ai_tool": [[{"node": "AI Agent", "type": "ai_tool", "index": 0}]]
+    },
+    "Insertar en proyectos": {
+      "ai_tool": [[{"node": "AI Agent", "type": "ai_tool", "index": 0}]]
+    },
+    "Insertar en ideas": {
+      "ai_tool": [[{"node": "AI Agent", "type": "ai_tool", "index": 0}]]
+    },
+    "Insertar en personas": {
+      "ai_tool": [[{"node": "AI Agent", "type": "ai_tool", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Europe/Madrid",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "meta": {
+    "version": "v012",
+    "description": "Full PARA with expanded fields: fechas, tags, datos_contacto, contexto_adicional",
+    "date": "2026-01-16"
+  }
+}

@@ -146,6 +146,37 @@ mcp__n8n-creator__n8n_autofix_workflow({
 
 ---
 
+### 5. Descubrimiento: Comando `/fix` Emergente 🎉
+
+**Hallazgo inesperado**: El comando `/fix` funciona perfectamente sin instrucciones explícitas en el system prompt.
+
+**Cómo funciona**:
+- **Gemini 2.0 Flash** + **Postgres Chat Memory** (15 mensajes de contexto)
+- El agente "recuerda" la última acción realizada
+- Infiere que `/fix` significa "corregir lo último guardado"
+- Ejecuta automáticamente: Consultar → Obtener ID → Actualizar
+
+**Prueba real** (Ejecución 85343):
+```
+Usuario: "Ir en bici con Fran"
+Bot: ✅ TAREA guardada (id: 15)
+
+Usuario: "/FIX VOY EN BICI CON FRANCISCO"
+Bot: 🔄 Actualizado: Tarea (id: 15)
+     Antes: Ir en bici con Fran
+     Ahora: Ir en bici con Francisco
+```
+
+**Tiempo de ejecución**: ~10 segundos (consulta + update)
+**Nodos ejecutados**: 8
+- Consultar tareas (4ms)
+- Actualizar tarea (42ms)
+- AI Agent (7.4s - razonamiento + memoria)
+
+**Implicación**: El sistema tiene **capacidades emergentes** no programadas explícitamente. La combinación de LLM + memoria conversacional es más poderosa de lo esperado.
+
+---
+
 ## 📊 Métricas de Mejora
 
 ### Antes vs Después
