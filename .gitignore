@@ -7,6 +7,13 @@
 *.log
 *.bak
 
+# Archivos experimentales/borrador
+para_gemini/
+
+# Backups locales
+backup_*.sql
+*.sql.backup
+
 # Archivos grandes (binarios)
 *.docx.bak
 

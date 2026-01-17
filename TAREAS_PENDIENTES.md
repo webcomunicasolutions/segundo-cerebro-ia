@@ -1,6 +1,51 @@
-# TAREAS PENDIENTES - Segundo Cerebro v017
+# TAREAS PENDIENTES - Segundo Cerebro v018 (PREPARACIÓN PARA PRODUCCIÓN)
 
-## 📋 Checklist del Plan Original
+## 🚀 PLAN v018 - Preparación para Producción
+
+### Objetivo
+Transformar el proyecto de sistema funcional a **producto compartible** con documentación completa para usuarios finales.
+
+### Tareas Principales (7 fases)
+
+#### ✅ FASE 1: Exportar y Versionar (COMPLETADA)
+- [x] Exportar workflow v018 desde n8n
+- [x] Guardar como `workflow_segundo_cerebro_v018.json`
+- [x] Crear `CHANGELOG.md` completo
+- [x] Actualizar `TAREAS_PENDIENTES.md`
+
+#### 🔄 FASE 2: Documentación de Usuario (EN PROGRESO)
+- [ ] Crear `MANUAL_DE_USUARIO.md` (~1000 líneas)
+- [ ] Crear `GUIA_RAPIDA.md` (~300 líneas)
+- [ ] Crear `PRIMEROS_PASOS.md` (~200 líneas)
+- [ ] Crear `FAQ.md` (~150 líneas)
+
+#### ⏳ FASE 3: Reorganizar Proyecto
+- [ ] Crear directorios: `workflows/`, `docs/`, `reference/`, `bugs-resolved/`, `sessions/`, `scripts/`
+- [ ] Mover archivos a carpetas correspondientes
+- [ ] Actualizar `.gitignore`
+
+#### ⏳ FASE 4: Script Limpieza BD
+- [ ] Crear `scripts/limpiar_base_datos.sql`
+- [ ] Agregar sección de limpieza a `PRIMEROS_PASOS.md`
+
+#### ⏳ FASE 5: Soporte de Audio
+- [ ] Modificar workflow para detectar tipo de mensaje (texto/audio)
+- [ ] Agregar nodos de transcripción con Gemini
+- [ ] Probar con mensaje de voz real
+
+#### ⏳ FASE 6: Actualizar README Principal
+- [ ] Actualizar estructura y enlaces
+- [ ] Reflejar v018 como versión de producción
+
+#### ⏳ FASE 7: Subir a GitHub
+- [ ] Actualizar `.gitignore`
+- [ ] Hacer commit descriptivo
+- [ ] Push a GitHub
+- [ ] Verificar visualización en web
+
+---
+
+## 📋 Checklist del Plan Original (v017)
 
 ### ✅ COMPLETADO (8/8 tareas principales)
 
