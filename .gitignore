@@ -9,6 +9,8 @@
 
 # Archivos experimentales/borrador
 para_gemini/
+gemini-docs/
+mysql-docs/
 
 # Backups locales
 backup_*.sql
