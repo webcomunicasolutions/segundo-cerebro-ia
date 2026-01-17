@@ -13,35 +13,42 @@ Transformar el proyecto de sistema funcional a **producto compartible** con docu
 - [x] Crear `CHANGELOG.md` completo
 - [x] Actualizar `TAREAS_PENDIENTES.md`
 
-#### 🔄 FASE 2: Documentación de Usuario (EN PROGRESO)
-- [ ] Crear `MANUAL_DE_USUARIO.md` (~1000 líneas)
-- [ ] Crear `GUIA_RAPIDA.md` (~300 líneas)
-- [ ] Crear `PRIMEROS_PASOS.md` (~200 líneas)
-- [ ] Crear `FAQ.md` (~150 líneas)
+#### ✅ FASE 2: Documentación de Usuario (COMPLETADA)
+- [x] Crear `MANUAL_DE_USUARIO.md` (~1000 líneas)
+- [x] Crear `GUIA_RAPIDA.md` (~300 líneas)
+- [x] Crear `PRIMEROS_PASOS.md` (~500 líneas)
+- [x] Crear `FAQ.md` (~400 líneas)
 
-#### ⏳ FASE 3: Reorganizar Proyecto
-- [ ] Crear directorios: `workflows/`, `docs/`, `reference/`, `bugs-resolved/`, `sessions/`, `scripts/`
-- [ ] Mover archivos a carpetas correspondientes
-- [ ] Actualizar `.gitignore`
+#### ✅ FASE 3: Reorganizar Proyecto (COMPLETADA)
+- [x] Crear directorios: `workflows/`, `docs/`, `reference/`, `bugs-resolved/`, `sessions/`, `scripts/`
+- [x] Mover archivos a carpetas correspondientes
+- [x] Actualizar `.gitignore`
 
-#### ⏳ FASE 4: Script Limpieza BD
-- [ ] Crear `scripts/limpiar_base_datos.sql`
-- [ ] Agregar sección de limpieza a `PRIMEROS_PASOS.md`
+#### ✅ FASE 4: Script Limpieza BD (COMPLETADA)
+- [x] Crear `scripts/limpiar_base_datos.sql`
+- [x] Agregar sección de limpieza a `PRIMEROS_PASOS.md`
 
-#### ⏳ FASE 5: Soporte de Audio
+#### ⏭️ FASE 5: Soporte de Audio (POSPUESTA PARA v019)
 - [ ] Modificar workflow para detectar tipo de mensaje (texto/audio)
 - [ ] Agregar nodos de transcripción con Gemini
 - [ ] Probar con mensaje de voz real
 
-#### ⏳ FASE 6: Actualizar README Principal
-- [ ] Actualizar estructura y enlaces
-- [ ] Reflejar v018 como versión de producción
+**Razón**: Funcionalidad compleja que merece su propia versión. Ya documentado en CHANGELOG.md y todos los documentos de usuario.
 
-#### ⏳ FASE 7: Subir a GitHub
-- [ ] Actualizar `.gitignore`
-- [ ] Hacer commit descriptivo
-- [ ] Push a GitHub
-- [ ] Verificar visualización en web
+#### ✅ FASE 6: Actualizar README Principal (COMPLETADA)
+- [x] Actualizar estructura y enlaces
+- [x] Reflejar v018 como versión de producción
+- [x] Documentar instalación completa
+- [x] Roadmap con v019 (audio)
+
+#### ✅ FASE 7: Subir a GitHub (COMPLETADA)
+- [x] Actualizar `.gitignore`
+- [x] Hacer commit descriptivo
+- [x] Push a GitHub: https://github.com/webcomunicasolutions/segundo-cerebro-ia
+- [x] Verificar visualización en web
+
+**Commit**: `5afffb7` - "✅ v018: Preparación para producción completa"
+**Cambios**: 45 archivos, +6573 líneas
 
 ---
 
