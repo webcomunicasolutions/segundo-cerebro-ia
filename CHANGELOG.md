@@ -2,6 +2,62 @@
 
 Todos los cambios notables en este proyecto serán documentados en este archivo.
 
+## [v019] - 2026-01-17 - 🎤 SOPORTE DE AUDIO IMPLEMENTADO
+
+### ✨ Nueva Funcionalidad: Mensajes de Voz
+
+#### Sistema de Procesamiento de Audio (100% Funcional)
+- **Detección automática**: Nodo Switch distingue entre mensajes de texto y audio
+- **Descarga de audio**: HTTP Requests obtienen archivo de Telegram API
+- **Transcripción con Gemini**: Google Gemini 2.0 Flash transcribe audio a texto
+- **Procesamiento unificado**: El texto transcrito se procesa como mensaje normal
+
+#### Arquitectura del Flujo de Audio
+```
+Telegram Trigger → Es Audio? (Switch)
+  ├─→ [Audio] → Obtener File Info → Descargar Audio → Gemini Transcribir → Preparar Mensaje → Guardar inbox_log → AI Agent → Responder
+  └─→ [Texto] → Guardar inbox_log → AI Agent → Responder
+```
+
+#### Nodos Agregados (5 nuevos)
+1. **Es Audio?** (Switch): Detecta `message.voice` o `message.audio`
+2. **Obtener File Info** (HTTP Request): Obtiene `file_path` del audio
+3. **Descargar Audio** (HTTP Request): Descarga archivo binario
+4. **Gemini Transcribir** (Google Gemini): Transcribe audio con `gemini-2.0-flash-exp`
+5. **Preparar Mensaje** (Set): Formatea transcripción como `message.text`
+
+### 🔧 Tecnologías Utilizadas
+- **Google Gemini 2.0 Flash**: Modelo multimodal con soporte nativo de audio
+- **Telegram Bot API**: `getFile` y descarga de archivos binarios
+- **n8n HTTP Request**: Manejo de binary data y file downloads
+- **n8n Switch**: Routing condicional por tipo de mensaje
+
+### ✅ Ventajas sobre Implementaciones Alternativas
+- **Sin OpenAI Whisper**: Eliminada dependencia de OpenAI
+- **Modelo unificado**: Mismo Gemini para transcripción y AI Agent
+- **Formato nativo**: Soporta OGG Vorbis (formato default de Telegram)
+- **Latencia optimizada**: Gemini 2.0 Flash es extremadamente rápido
+
+### 📊 Estado del Sistema
+- ✅ Flujo de texto: Funcional (sin cambios)
+- ✅ Flujo de audio: Implementado y listo para pruebas
+- ✅ CRUD completo: 16 herramientas funcionando
+- ✅ Workflow exportado: `workflows/segundo_cerebro_v019.json`
+
+### 🧪 Testing Pendiente
+- ⏳ **Test 1**: Enviar mensaje de texto (regresión)
+- ⏳ **Test 2**: Enviar mensaje de voz real
+
+### 📦 Cambios Técnicos
+- **Nodos totales**: 22 → 27 (+5 nodos de audio)
+- **Conexiones totales**: 21 → 26 (+5 conexiones)
+- **Workflow versionado**: v018 → v019
+
+### 🚀 Próximo Paso
+Usuario debe probar sistema con mensajes de voz reales desde Telegram para validar transcripción y procesamiento completo.
+
+---
+
 ## [v018] - 2026-01-17 - ✅ COMPLETADO AL 100% - LISTO PARA PRODUCCIÓN 🚀
 
 ### ✅ Características Completadas

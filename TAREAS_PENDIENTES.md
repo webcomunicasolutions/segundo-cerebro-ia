@@ -1,4 +1,27 @@
-# TAREAS PENDIENTES - Segundo Cerebro v018 (PREPARACIÓN PARA PRODUCCIÓN)
+# TAREAS PENDIENTES - Segundo Cerebro v019 (SOPORTE DE AUDIO)
+
+## 🎤 v019 IMPLEMENTADO - SOPORTE DE AUDIO
+
+### ✅ Completado
+- ✅ **Arquitectura de audio**: Nodo Switch + HTTP Requests + Gemini Transcribe
+- ✅ **5 nodos nuevos**: Es Audio?, Obtener File Info, Descargar Audio, Gemini Transcribir, Preparar Mensaje
+- ✅ **Flujos separados**: Audio y texto convergen en el mismo AI Agent
+- ✅ **Workflow exportado**: `workflows/segundo_cerebro_v019.json`
+- ✅ **Documentación actualizada**: CHANGELOG.md con v019
+
+### ⏳ Pendiente
+- ⏳ **Test de regresión**: Enviar mensaje de texto y verificar funcionalidad normal
+- ⏳ **Test de audio**: Enviar mensaje de voz real y verificar transcripción + procesamiento
+- ⏳ **Validación completa**: Confirmar que ambos flujos funcionan correctamente
+
+### 🚀 Estado del Sistema v019
+- **Nodos totales**: 27 (22 de v018 + 5 nuevos de audio)
+- **Conexiones**: 26
+- **Tecnología de transcripción**: Google Gemini 2.0 Flash (multimodal)
+- **Formato de audio soportado**: OGG Vorbis (Telegram nativo)
+- **Estado del workflow**: Activo y listo para pruebas
+
+---
 
 ## 🎉 v018 COMPLETADO AL 100% - LISTO PARA PRODUCCIÓN
 
